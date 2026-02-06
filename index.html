@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SD TV LIVE</title>
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/controls.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.ui.min.js"></script>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:#000;
+  color:#fff;
+  font-family:system-ui,Arial;
+}
+
+/* HEADER */
+header{
+  padding:12px 16px;
+  font-size:22px;
+  font-weight:800;
+}
+header span{color:#e50914}
+
+/* PLAYER */
+.shaka-video-container{
+  width:100%;
+  aspect-ratio:16/9;
+  background:#000;
+  position:relative;
+}
+video{width:100%;height:100%}
+
+/* LIVE */
+.live{
+  position:absolute;
+  top:10px;
+  left:10px;
+  background:#e50914;
+  padding:4px 8px;
+  font-size:12px;
+  border-radius:4px;
+}
+
+/* FILTER */
+.filters{
+  display:flex;
+  gap:10px;
+  padding:10px;
+}
+.filters button{
+  background:#111;
+  border:1px solid #333;
+  color:#fff;
+  padding:6px 14px;
+  border-radius:20px;
+}
+
+/* CHANNEL LIST (VERTICAL FIX) */
+#grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  padding:12px;
+}
+
+.item{
+  background:#111;
+  border-radius:6px;
+  padding:10px;
+  text-align:center;
+}
+.item img{
+  width:70px;
+  height:70px;
+  object-fit:contain;
+}
+.item div{
+  font-size:12px;
+  margin-top:6px;
+}
+.item:active{background:#222}
+</style>
+</head>
+
+<body>
+
+<header><span>SD</span> TV LIVE</header>
+
+<div class="shaka-video-container" data-shaka-player>
+  <video autoplay playsinline></video>
+  <div class="live">LIVE</div>
+</div>
+
+<div class="filters">
+  <button id="allBtn">All</button>
+  <button id="sportsBtn">Sports</button>
+  <button id="moviesBtn">Movies</button>
+  <button id="musicBtn">Music</button>
+</div>
+
+<div id="grid"></div>
+
+<script>
+const M3U_URL =
+"https://raw.githubusercontent.com/Prtstream820894/prtstreams/main/pr.m3u";
+
+const video=document.querySelector("video");
+const player=new shaka.Player(video);
+const grid=document.getElementById("grid");
+let allChannels=[];
+
+shaka.polyfill.installAll();
+new shaka.ui.Overlay(player,
+document.querySelector(".shaka-video-container"),video);
+
+fetch(M3U_URL).then(r=>r.text()).then(data=>{
+  let lines=data.split("\n"), ch={};
+  lines.forEach(l=>{
+    if(l.startsWith("#EXTINF")){
+      ch={};
+      ch.name=l.split(",").pop();
+      let logo=l.match(/tvg-logo="([^"]+)"/);
+      ch.logo=logo?logo[1]:"";
+    }
+    if(l.startsWith("http") && ch.name){
+      ch.url=l;
+      allChannels.push({...ch});
+      createItem(ch);
+      ch={};
+    }
+  });
+});
+
+function createItem(ch){
+  let d=document.createElement("div");
+  d.className="item";
+  d.innerHTML=`<img src="${ch.logo}">
+               <div>${ch.name}</div>`;
+  d.onclick=()=>player.load(ch.url);
+  grid.appendChild(d);
+}
+
+/* FILTERS */
+allBtn.onclick=()=>render(allChannels);
+sportsBtn.onclick=()=>render(
+  allChannels.filter(c=>c.name.toLowerCase().includes("sport")));
+moviesBtn.onclick=()=>render(
+  allChannels.filter(c=>c.name.toLowerCase().includes("movie")));
+musicBtn.onclick=()=>render(
+  allChannels.filter(c=>c.name.toLowerCase().includes("music")));
+
+function render(list){
+  grid.innerHTML="";
+  list.forEach(createItem);
+}
+</script>
+
+</body>
+</html>
